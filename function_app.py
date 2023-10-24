@@ -3,11 +3,16 @@ import logging
 import openai
 import os
 from dotenv import load_dotenv
+from openai_api.calls import (
+    create_prompt,
+    get_openai_api_key
+)
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 @app.route(route="gen_ai")
 def gen_ai(req: func.HttpRequest) -> func.HttpResponse:
+    """Init/test function."""
     logging.info('Python HTTP trigger function processed a request.')
 
     name = req.params.get('name')
@@ -28,42 +33,52 @@ def gen_ai(req: func.HttpRequest) -> func.HttpResponse:
         )
 
 @app.route(route="hello", methods=["GET"])
-def hello(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for /api/hello.')
+def hello_get_method(req:func.HttpRequest) -> func.HttpResponse:
+    """
+    GET method. 
+    Needs only API key, prompt is hardcoded
+    """
+    logging.info('Python HTTP trigger function processed a GET request.')
 
-    return func.HttpResponse("Hello, World!", status_code=200)
+    api_key = get_openai_api_key(req)
+    if not api_key:
+        return func.HttpResponse("openai_api_key is missing", status_code=400)
 
-@app.route(route="prompt")
-def process_prompt(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request for /api/prompt.')
+    prompt = "Hello! Who is the president of Poland?"
+    system_message = "You are a helpful AI assistant"
+    ai_response = create_prompt(prompt, api_key, system_message)
 
+    return func.HttpResponse(ai_response, status_code=200)
 
-    # config
-    load_dotenv()
-    openai.api_type = "azure"
-    openai.api_base = "https://gen-ai-training-avanade-2.openai.azure.com/"
-    openai.api_version = "2023-07-01-preview"
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+@app.route(route="prompt", methods=["POST"])
+def prompt_post_method(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    POST method.
+    Takes API key and prompt as a param.
+    """
+    logging.info('Python HTTP trigger function processed a POST request.')
 
+    # API key
+    api_key = get_openai_api_key(req)
+    if not api_key:
+        return func.HttpResponse("openai_api_key is missing", status_code=400)
+
+    # Prompt
     prompt = req.params.get('prompt')
-
     if not prompt:
         return func.HttpResponse(
             "Please provide a prompt.",
             status_code=400
-        )        
-    response = openai.ChatCompletion.create(
-        engine="gpt35_test",
-        messages = [
-            {"role":"system","content":"You are an AI assistant that helps people find information."},
-            {"role":"user","content": prompt}
-            ],
-        temperature=0.7,
-        max_tokens=800,
-        top_p=0.95,
-        frequency_penalty=0,
-        presence_penalty=0,
-        stop=None)
+        )  
+
+    # System message
+    system_message = req.params.get('sys_message')
+    if not system_message:
+        return func.HttpResponse(
+            "Please provide a system message.",
+            status_code=400
+            )
     
-    message = response['choices'][0]['message']['content']
-    return func.HttpResponse(message)
+    ai_response = create_prompt(prompt, api_key, system_message)
+
+    return func.HttpResponse(ai_response, status_code=200)
