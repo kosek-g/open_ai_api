@@ -48,7 +48,7 @@ def hello_get_method(req:func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("openai_api_key is missing", status_code=400)
 
     # Hardcoded prompt and sys. message
-    prompt = "Hello! Who is the president of Poland?"
+    prompt = "Hello! Who is the president of USA?"
     system_message = "You are a helpful AI assistant"
 
     # OpenAI resposne
@@ -91,7 +91,7 @@ def prompt_post_method(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(ai_response, status_code=200)
 
-# POST function / 
+# POST function
 @app.route(route="extract_details", methods=["POST"])
 def extract_details_method(req: func.HttpRequest) -> func.HttpResponse:
     """
