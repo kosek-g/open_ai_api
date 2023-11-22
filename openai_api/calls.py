@@ -7,6 +7,8 @@ def create_prompt(prompt, api_key, system_message):
         prompt (String): prompt
         api_key (String): OpenAI API key passed in request
         system_message (String): system message for the model
+    Returns:
+        str: Response from OpenAI extracted fron json.
     """
     # config
     openai.api_type = "azure"
