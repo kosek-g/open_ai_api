@@ -1,12 +1,10 @@
-import azure.functions as func
 import logging
-import openai
 import os
-from dotenv import load_dotenv
-from openai_api.calls import (
-    create_prompt,
-    get_openai_api_key
-)
+
+import azure.functions as func
+import openai
+from openai_api.calls import create_prompt, get_openai_api_key
+from sql_db.extract_orders import extract_order_info_from_email
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
@@ -125,6 +123,59 @@ def extract_details_method(req: func.HttpRequest) -> func.HttpResponse:
         Return only JSON with the content, no other words."
     )
     
+    # OpenAI resposne
+    ai_response = create_prompt(prompt, api_key, system_message)
+
+    return func.HttpResponse(ai_response, status_code=200)
+
+# POST function
+@app.route(route="get_guidelines", methods=["POST"])
+def get_guidelines(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    POST method.
+    Takes API key and prompt as a body content.
+    """
+    logging.info('Python HTTP trigger function processed a POST request.')
+
+    # API key / header
+    api_key = get_openai_api_key(req)
+    if not api_key:
+        return func.HttpResponse("openai_api_key is missing", status_code=400)
+
+    # Body
+    req_body = req.get_json()
+    email_content = req_body.get('email_content')
+    email_date = req_body.get('email_date')
+    client_address = req_body.get('client_address')
+
+    if not email_content or not email_date or not client_address:
+        return func.HttpResponse(
+            "Please provide email content, date, and client address in the request body.",
+            status_code=400
+        )
+    
+    # Pack the necessary email information into a tuple to pass to extract_order_info_from_email
+    email_info = (email_content, email_date, client_address)
+    
+    # Return JSON with customer history
+    customer_history = extract_order_info_from_email(email_info)
+
+
+    # Prompt
+    prompt = (
+            f"Your task is to extract data from the email below. \
+            In JSON format return customer name (person that sends the email), \
+            order number, order date and product name. \
+            Here is the email content: '{email_content}'. \
+            Beside that, analyze order history that is passed \
+            as a JSON, and based on that, provide further steps \
+            describing how to handle the email. Here is the order history \
+            stored in JSON: {customer_history}"
+        )
+    
+    # Hardcoded system message
+    system_message = "You are a helpful sales assistance."
+
     # OpenAI resposne
     ai_response = create_prompt(prompt, api_key, system_message)
 
