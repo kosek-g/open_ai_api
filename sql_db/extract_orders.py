@@ -1,9 +1,26 @@
+import os
 import sqlite3
 import json
 
 def extract_order_info_from_email(email_info):
-    # Connect to the SQLite database
-    conn = sqlite3.connect('C:/Users/grzegorz.kosek/Desktop/My Projects/Data & AI/GenAI/GenAI%20Traning/sql_db/gen_ai.db')
+    """
+    Extracts previous order information associated with a client's email address from an SQLite database.
+
+    Args:
+        email_info (tuple): A tuple containing email content, email date, and client address.
+
+    Returns:
+        str: JSON-formatted string containing information about previous orders related to the client's email.
+             Returns None if no previous orders are found or if errors occur during the process.
+    """
+    # Get the current directory of the script
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+
+    # Construct the path to the SQLite database
+    db_path = os.path.join(current_directory, 'gen_ai.db')
+
+    # Connect to the database
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     try:
@@ -45,13 +62,14 @@ def extract_order_info_from_email(email_info):
                 orders_json = json.dumps(orders_info, indent=4)
                 return orders_json
             else:
-                print("No previous orders found for the client associated with the provided address.")
+                return None  # No previous orders found for the client associated with the provided address.
 
         else:
-            print("No client found with the provided address.")
+            return None  # No client found with the provided address.
 
     except sqlite3.Error as e:
         print("Error querying the database:", e)
+        return None  # Return None if there's an error querying the database
 
     finally:
         # Close the database connection
